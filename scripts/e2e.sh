@@ -19,11 +19,18 @@ pwd
 # Start dev server in background
 if [ "$IS_CI_AUTOMATION" = "yes" ]; then
   BUILD_ENV=production docker compose -f "$REPO_ROOT/compose.ci.yml" up -d --build
-  # When running inside a container (DinD), published ports bind to the docker host,
-  # not the container's localhost. Reach them via the bridge gateway.
-  DOCKER_HOST=$(ip route show default | awk '{print $3; exit}')
-  echo "Docker host gateway: $DOCKER_HOST"
-  # Point playwright at the gateway IP so it can reach compose containers
+  # In GitHub Actions `container:` jobs the docker socket is mounted from the HOST,
+  # so compose containers publish ports to the HOST's network, not to localhost inside
+  # the devcontainer. Reach them via the bridge gateway IP.
+  # In other DinD environments (devpod, local) the daemon is internal and published
+  # ports ARE available on localhost.
+  if [ "$GITHUB_ACTIONS" = "true" ]; then
+    DOCKER_HOST=$(ip route show default | awk '{print $3; exit}')
+    echo "Docker host gateway: $DOCKER_HOST"
+  else
+    DOCKER_HOST="localhost"
+  fi
+  # Point playwright at the correct host so it can reach the Vite dev server
   export PLAYWRIGHT_BASE_URL="http://${DOCKER_HOST}:5173"
 else
   pnpm dev:detach
