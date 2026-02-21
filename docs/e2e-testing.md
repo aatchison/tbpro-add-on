@@ -41,6 +41,37 @@ Key differences from `compose.yml`:
 
 The `postgres-data` volume is kept so the database persists across test retries within the same run.
 
+Also, `env_file:` is used for the backend instead of a `volumes:` bind mount for `.env`. Docker Compose processes `env_file:` client-side (inside the devcontainer), avoiding the DinD path-resolution failure that leaves bind-mounted files empty.
+
+---
+
+## GitHub Actions devcontainer quirks
+
+The `container:` job runs inside `ghcr.io/.../cached-devcontainer:latest`. Several non-obvious issues arise:
+
+### Firefox refuses to run as root with a non-root HOME
+
+GitHub Actions sets `HOME=/github/home` (owned by uid 1001) even though the devcontainer container runs as root. Firefox Nightly refuses this combination:
+
+```
+Running Nightly as root in a regular user's session is not supported.
+($HOME is /github/home which is owned by uid 1001.)
+```
+
+`scripts/e2e.sh` works around this by:
+1. Pinning `PLAYWRIGHT_BROWSERS_PATH` to the original `$HOME/.cache/ms-playwright` at startup (before any HOME change)
+2. Setting `HOME=/root` immediately before launching Playwright (root-owned, so Firefox accepts it)
+
+### Firefox sandbox syscalls blocked by seccomp
+
+The devcontainer's seccomp profile blocks `clone(CLONE_NEWUSER)` and similar namespace syscalls Firefox needs for its sandbox. The symptom is `exitCode=1` with completely empty browser logs.
+
+Fixed by adding `--security-opt seccomp=unconfined` to the container `options:` in `.github/workflows/e2e-test.yml`.
+
+### /dev/shm too small
+
+Docker's default `/dev/shm` (64 MB) is too small for Firefox. Fixed by adding `--shm-size=2gb` to container `options:`.
+
 ---
 
 ## Path resolution in `scripts/e2e.sh`
