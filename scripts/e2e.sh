@@ -16,20 +16,30 @@ cd "$REPO_ROOT"
 
 pwd
 
-# Start dev server in background
+# In GitHub Actions `container:` jobs the docker socket is mounted from the HOST,
+# so compose containers publish ports to the HOST's network, not to localhost inside
+# the devcontainer. Reach them via the bridge gateway IP.
+# In other DinD environments (devpod, local) the daemon is internal and published
+# ports ARE available on localhost.
+# We must detect the host BEFORE building containers so we can bake the correct
+# VITE_SEND_SERVER_URL into the frontend image (the browser uses this URL for API calls).
 if [ "$IS_CI_AUTOMATION" = "yes" ]; then
-  BUILD_ENV=production docker compose -f "$REPO_ROOT/compose.ci.yml" up -d --build
-  # In GitHub Actions `container:` jobs the docker socket is mounted from the HOST,
-  # so compose containers publish ports to the HOST's network, not to localhost inside
-  # the devcontainer. Reach them via the bridge gateway IP.
-  # In other DinD environments (devpod, local) the daemon is internal and published
-  # ports ARE available on localhost.
   if [ "$GITHUB_ACTIONS" = "true" ]; then
     DOCKER_HOST=$(ip route show default | awk '{print $3; exit}')
     echo "Docker host gateway: $DOCKER_HOST"
   else
     DOCKER_HOST="localhost"
   fi
+
+  # Patch frontend .env so the browser-side JS calls the backend at the correct host.
+  # The default is https://localhost:8088 which only works when localhost reaches containers.
+  FRONTEND_ENV="$REPO_ROOT/packages/send/frontend/.env"
+  sed -i "s|^VITE_SEND_SERVER_URL=.*|VITE_SEND_SERVER_URL=https://${DOCKER_HOST}:8088|" "$FRONTEND_ENV"
+  sed -i "s|^VITE_SEND_CLIENT_URL=.*|VITE_SEND_CLIENT_URL=http://${DOCKER_HOST}:5173|" "$FRONTEND_ENV"
+  echo "Patched frontend .env: VITE_SEND_SERVER_URL=https://${DOCKER_HOST}:8088"
+
+  BUILD_ENV=production docker compose -f "$REPO_ROOT/compose.ci.yml" up -d --build
+
   # Point playwright at the correct host so it can reach the Vite dev server
   export PLAYWRIGHT_BASE_URL="http://${DOCKER_HOST}:5173"
 else
