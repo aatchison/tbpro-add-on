@@ -1,15 +1,17 @@
 #!/bin/bash
 
-# Create zip for submission
+REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+
+# Install browser dependencies
 echo "Installing browser dependencies..."
-cd packages/send
+cd "$REPO_ROOT/packages/send"
 pnpm exec playwright install
-cd ../../
+cd "$REPO_ROOT"
 
 pwd
 
 # Start dev server in background
-BUILD_ENV=production docker compose -f compose.e2e.yml up -d --build
+BUILD_ENV=production docker compose -f "$REPO_ROOT/compose.e2e.yml" up -d --build
 
 # Function to cleanup dev server on script exit
 cleanup() {
@@ -41,7 +43,7 @@ done
 echo "HTTPS server is ready"
 
 # Start docker logs in background
-docker compose -f compose.e2e.yml logs -f &
+docker compose -f "$REPO_ROOT/compose.e2e.yml" logs -f &
 DOCKER_LOGS_PID=$!
 
 while true; do
@@ -59,7 +61,7 @@ echo "Vite dev server is ready"
 
 
 # Run tests in parallel with docker logs
-pnpm exec playwright test --grep dev-desktop --config ./send/e2e/playwright.config.dev.ts  &
+pnpm exec playwright test --grep dev-desktop --config "$REPO_ROOT/packages/send/e2e/playwright.config.dev.ts" &
 PLAYWRIGHT_PID=$!
 
 # Wait for tests to complete
