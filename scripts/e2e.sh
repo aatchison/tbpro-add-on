@@ -30,23 +30,29 @@ trap cleanup INT TERM
 
 # Wait for servers to be ready
 echo "Waiting for dev servers..."
+echo "--- docker compose ps ---"
+docker compose -f "$REPO_ROOT/compose.ci.yml" ps 2>&1 || docker compose ps 2>&1
+echo "--- initial curl probe (verbose) ---"
+curl -v -k --max-time 5 "https://${DOCKER_HOST}:8088/" 2>&1 || true
+echo "--- end probe ---"
 START_TIME=$(date +%s)
 LAST_LOG_TIME=0
 while true; do
-  STATUS=$(curl -s -k -w "%{http_code}" "https://${DOCKER_HOST}:8088/" -o /dev/null)
+  STATUS=$(curl -s -k -w "%{http_code}" --max-time 5 "https://${DOCKER_HOST}:8088/" -o /dev/null)
   if [ "$STATUS" = "200" ]; then
     break
   fi
-  
+
   CURRENT_TIME=$(date +%s)
   ELAPSED=$((CURRENT_TIME - START_TIME))
-  
-  # Only log every 5 seconds
-  if [ $((ELAPSED - LAST_LOG_TIME)) -ge 5 ]; then
-    echo "Waiting for HTTPS server... (${ELAPSED}s elapsed)"
+
+  # Log every 30 seconds with container status
+  if [ $((ELAPSED - LAST_LOG_TIME)) -ge 30 ]; then
+    echo "Waiting for HTTPS server... (${ELAPSED}s elapsed, curl status: ${STATUS})"
+    docker compose -f "$REPO_ROOT/compose.ci.yml" ps 2>&1 || docker compose ps 2>&1
     LAST_LOG_TIME=$ELAPSED
   fi
-  
+
   sleep 1
 done
 echo "HTTPS server is ready"
