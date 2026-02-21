@@ -22,28 +22,22 @@ else
   DOCKER_HOST="localhost"
 fi
 
+# Start docker logs in background immediately so we see container output during startup
+if [ "$IS_CI_AUTOMATION" = "yes" ]; then
+  docker compose -f "$REPO_ROOT/compose.ci.yml" logs -f &
+else
+  docker compose logs -f &
+fi
+DOCKER_LOGS_PID=$!
+
 # Function to cleanup dev server on script exit
 cleanup() {
   kill $DOCKER_LOGS_PID 2>/dev/null
 }
 trap cleanup INT TERM
 
-# Wait for servers to be ready
-echo "Waiting for dev servers..."
-echo "--- docker compose ps ---"
-docker compose -f "$REPO_ROOT/compose.ci.yml" ps 2>&1 || docker compose ps 2>&1
-echo "--- network info ---"
-ip addr show && ip route
-echo "--- nc port probe ---"
-nc -zv "$DOCKER_HOST" 8088 2>&1 || echo "Port $DOCKER_HOST:8088 not reachable"
-nc -zv "$DOCKER_HOST" 5173 2>&1 || echo "Port $DOCKER_HOST:5173 not reachable"
-echo "--- reverse-proxy logs ---"
-docker compose -f "$REPO_ROOT/compose.ci.yml" logs reverse-proxy 2>&1 | tail -20
-echo "--- frontend logs ---"
-docker compose -f "$REPO_ROOT/compose.ci.yml" logs frontend 2>&1 | tail -20
-echo "--- initial curl probe (verbose) ---"
-curl -v -k --max-time 5 "https://${DOCKER_HOST}:8088/" 2>&1 || true
-echo "--- end probe ---"
+# Wait for HTTPS server (nginx reverse-proxy) to return 200
+echo "Waiting for HTTPS server..."
 START_TIME=$(date +%s)
 LAST_LOG_TIME=0
 while true; do
@@ -55,24 +49,19 @@ while true; do
   CURRENT_TIME=$(date +%s)
   ELAPSED=$((CURRENT_TIME - START_TIME))
 
-  # Log every 30 seconds with container status
+  # Log every 30 seconds with container status and backend logs
   if [ $((ELAPSED - LAST_LOG_TIME)) -ge 30 ]; then
     echo "Waiting for HTTPS server... (${ELAPSED}s elapsed, curl status: ${STATUS})"
     docker compose -f "$REPO_ROOT/compose.ci.yml" ps 2>&1 || docker compose ps 2>&1
+    echo "--- backend logs (last 20 lines) ---"
+    docker compose -f "$REPO_ROOT/compose.ci.yml" logs --no-log-prefix backend 2>&1 | tail -20
+    echo "--- end backend logs ---"
     LAST_LOG_TIME=$ELAPSED
   fi
 
   sleep 1
 done
 echo "HTTPS server is ready"
-
-# Start docker logs in background
-if [ "$IS_CI_AUTOMATION" = "yes" ]; then
-  docker compose -f "$REPO_ROOT/compose.ci.yml" logs -f &
-else
-  docker compose logs -f &
-fi
-DOCKER_LOGS_PID=$!
 
 while true; do
   RESPONSE=$(curl -s "http://${DOCKER_HOST}:5173/send")
