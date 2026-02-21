@@ -32,6 +32,15 @@ trap cleanup INT TERM
 echo "Waiting for dev servers..."
 echo "--- docker compose ps ---"
 docker compose -f "$REPO_ROOT/compose.ci.yml" ps 2>&1 || docker compose ps 2>&1
+echo "--- network info ---"
+ip addr show && ip route
+echo "--- nc port probe ---"
+nc -zv "$DOCKER_HOST" 8088 2>&1 || echo "Port $DOCKER_HOST:8088 not reachable"
+nc -zv "$DOCKER_HOST" 5173 2>&1 || echo "Port $DOCKER_HOST:5173 not reachable"
+echo "--- reverse-proxy logs ---"
+docker compose -f "$REPO_ROOT/compose.ci.yml" logs reverse-proxy 2>&1 | tail -20
+echo "--- frontend logs ---"
+docker compose -f "$REPO_ROOT/compose.ci.yml" logs frontend 2>&1 | tail -20
 echo "--- initial curl probe (verbose) ---"
 curl -v -k --max-time 5 "https://${DOCKER_HOST}:8088/" 2>&1 || true
 echo "--- end probe ---"
