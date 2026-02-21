@@ -17,6 +17,8 @@ if [ "$IS_CI_AUTOMATION" = "yes" ]; then
   # not the container's localhost. Reach them via the bridge gateway.
   DOCKER_HOST=$(ip route show default | awk '{print $3; exit}')
   echo "Docker host gateway: $DOCKER_HOST"
+  # Point playwright at the gateway IP so it can reach compose containers
+  export PLAYWRIGHT_BASE_URL="http://${DOCKER_HOST}:5173"
 else
   pnpm dev:detach
   DOCKER_HOST="localhost"
@@ -40,6 +42,7 @@ trap cleanup INT TERM
 echo "Waiting for HTTPS server..."
 START_TIME=$(date +%s)
 LAST_LOG_TIME=0
+MAX_WAIT=180  # 3-minute timeout - fail fast rather than waiting for step timeout
 while true; do
   STATUS=$(curl -s -k -w "%{http_code}" --max-time 5 "https://${DOCKER_HOST}:8088/" -o /dev/null)
   if [ "$STATUS" = "200" ]; then
@@ -48,6 +51,12 @@ while true; do
 
   CURRENT_TIME=$(date +%s)
   ELAPSED=$((CURRENT_TIME - START_TIME))
+
+  if [ "$ELAPSED" -ge "$MAX_WAIT" ]; then
+    echo "ERROR: HTTPS server not ready after ${MAX_WAIT}s (last status: ${STATUS})"
+    docker compose -f "$REPO_ROOT/compose.ci.yml" logs 2>&1 | tail -40
+    exit 1
+  fi
 
   # Log every 30 seconds with container status and backend logs
   if [ $((ELAPSED - LAST_LOG_TIME)) -ge 30 ]; then
