@@ -8,7 +8,7 @@ Tests live in `packages/send/e2e/` and are tagged `@dev-desktop`. The entry poin
 
 ---
 
-## Why `compose.e2e.yml` exists
+## Why `compose.ci.yml` exists
 
 The default `compose.yml` mounts named Docker volumes over the node_modules directories inside each container:
 
@@ -30,7 +30,7 @@ The frontend container exits immediately, the reverse-proxy has nothing to forwa
 
 ### Solution
 
-`compose.e2e.yml` is a variant of `compose.yml` with all named node_modules volumes and source bind mounts removed. Containers run directly from their built image layers, which always contain the correct node_modules.
+`compose.ci.yml` is a variant of `compose.yml` with all named node_modules volumes and source bind mounts removed. Containers run directly from their built image layers, which always contain the correct node_modules.
 
 Key differences from `compose.yml`:
 
@@ -51,7 +51,7 @@ The `postgres-data` volume is kept so the database persists across test retries 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 ```
 
-This ensures `compose.e2e.yml`, the playwright config, and the playwright install target are found correctly regardless of where the script is invoked from.
+This ensures `compose.ci.yml`, the playwright config, and the playwright install target are found correctly regardless of where the script is invoked from.
 
 ---
 
@@ -71,7 +71,7 @@ lerna run test:e2e:ci --scope=send-suite-e2e
 
 The script will:
 1. Install Playwright browsers
-2. Build and start the stack with `compose.e2e.yml`
+2. Build and start the stack with `compose.ci.yml`
 3. Wait for `https://localhost:8088/` (reverse-proxy) and `http://localhost:5173/send` (vite)
 4. Run Playwright tests tagged `@dev-desktop` against Firefox
 5. Upload a report artifact on completion

@@ -11,7 +11,11 @@ cd "$REPO_ROOT"
 pwd
 
 # Start dev server in background
-BUILD_ENV=production docker compose -f "$REPO_ROOT/compose.e2e.yml" up -d --build
+if [ "$IS_CI_AUTOMATION" = "yes" ]; then
+  BUILD_ENV=production docker compose -f "$REPO_ROOT/compose.ci.yml" up -d --build
+else
+  pnpm dev:detach
+fi
 
 # Function to cleanup dev server on script exit
 cleanup() {
@@ -43,7 +47,11 @@ done
 echo "HTTPS server is ready"
 
 # Start docker logs in background
-docker compose -f "$REPO_ROOT/compose.e2e.yml" logs -f &
+if [ "$IS_CI_AUTOMATION" = "yes" ]; then
+  docker compose -f "$REPO_ROOT/compose.ci.yml" logs -f &
+else
+  docker compose logs -f &
+fi
 DOCKER_LOGS_PID=$!
 
 while true; do

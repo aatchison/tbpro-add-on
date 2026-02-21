@@ -44,7 +44,7 @@ jobs:
             shared-changed:
               - 'packages/shared/**'
             e2e-infra-changed:
-              - 'compose.e2e.yml'
+              - 'compose.ci.yml'
               - 'scripts/e2e.sh'
               - 'packages/send/e2e/**'
 
