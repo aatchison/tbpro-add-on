@@ -95,8 +95,9 @@ echo "Vite dev server is ready"
 # Firefox Nightly refuses to run as root when $HOME is not owned by root.
 # GitHub Actions sets HOME=/github/home (owned by uid 1001) but runs containers as root.
 # Fix: point HOME at /root (always root-owned) so Firefox accepts the environment.
+# Guard: only applies when actually running as root (not in local devpod as vscode).
 # PLAYWRIGHT_BROWSERS_PATH (set above) keeps pointing at the browser cache.
-if [ "$IS_CI_AUTOMATION" = "yes" ]; then
+if [ "$IS_CI_AUTOMATION" = "yes" ] && [ "$(id -u)" = "0" ]; then
   export HOME=/root
 fi
 
