@@ -50,6 +50,7 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/${{ github.repository }}/cached-devcontainer:latest
+      options: --shm-size=2gb
     env:
       IS_CI_AUTOMATION: "yes"
     steps:
