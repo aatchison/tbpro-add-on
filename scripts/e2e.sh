@@ -2,6 +2,12 @@
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 
+# Lock in the browser cache path before any HOME changes.
+# GitHub Actions sets HOME=/github/home (uid 1001 owned) but runs as root, which
+# causes Firefox Nightly to refuse to start. We'll fix HOME=/root later, but the
+# browser binaries are installed under the original HOME so we pin that path now.
+export PLAYWRIGHT_BROWSERS_PATH="${HOME}/.cache/ms-playwright"
+
 # Install browsers and system dependencies (--with-deps installs both in one step)
 echo "Installing browser dependencies..."
 cd "$REPO_ROOT/packages/send"
@@ -85,6 +91,14 @@ while true; do
 done
 echo "Vite dev server is ready"
 
+
+# Firefox Nightly refuses to run as root when $HOME is not owned by root.
+# GitHub Actions sets HOME=/github/home (owned by uid 1001) but runs containers as root.
+# Fix: point HOME at /root (always root-owned) so Firefox accepts the environment.
+# PLAYWRIGHT_BROWSERS_PATH (set above) keeps pointing at the browser cache.
+if [ "$IS_CI_AUTOMATION" = "yes" ]; then
+  export HOME=/root
+fi
 
 # Run tests in parallel with docker logs
 pnpm exec playwright test --grep dev-desktop --config "$REPO_ROOT/packages/send/e2e/playwright.config.dev.ts" &
