@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, beforeAll, afterAll, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, beforeAll, afterEach } from 'vitest';
 import { PrismaClient, Container, ContainerType, Group, ItemType, User, UserTier, Item, Upload } from '@prisma/client';
 import { createItem, findOrphans } from '../../models';
 
@@ -49,17 +49,9 @@ describe('findOrphans', () => {
         }
       });
     } catch {
-
+      // entities may already be deleted by cascade — ignore
     }
 
-    items = [];
-    uploads = [];
-  }
-
-  async function deleteAll() {
-    console.warn(`💥💥💥 destroying all Items and all Uploads 💥💥💥`);
-    await prisma.item.deleteMany({});
-    await prisma.upload.deleteMany({});
     items = [];
     uploads = [];
   }
