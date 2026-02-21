@@ -9,7 +9,7 @@ cd ../../
 pwd
 
 # Start dev server in background
-pnpm dev:detach 
+BUILD_ENV=production docker compose -f compose.e2e.yml up -d --build
 
 # Function to cleanup dev server on script exit
 cleanup() {
@@ -41,7 +41,7 @@ done
 echo "HTTPS server is ready"
 
 # Start docker logs in background
-docker compose logs -f &
+docker compose -f compose.e2e.yml logs -f &
 DOCKER_LOGS_PID=$!
 
 while true; do
