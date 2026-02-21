@@ -39,7 +39,7 @@ FROM build_app AS runtime_production
 ENV runtime_user=send
 # Add runtime user
 ONBUILD RUN echo "Add runtime user"
-ONBUILD RUN useradd ${runtime_user} -d /home/${runtime_user}
+ONBUILD RUN useradd -m ${runtime_user} -d /home/${runtime_user}
 # Chown /app to runtime_user
 ONBUILD RUN chown -Rvf ${runtime_user} /app
 # Switch to runtime user
