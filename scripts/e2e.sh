@@ -13,8 +13,13 @@ pwd
 # Start dev server in background
 if [ "$IS_CI_AUTOMATION" = "yes" ]; then
   BUILD_ENV=production docker compose -f "$REPO_ROOT/compose.ci.yml" up -d --build
+  # When running inside a container (DinD), published ports bind to the docker host,
+  # not the container's localhost. Reach them via the bridge gateway.
+  DOCKER_HOST=$(ip route show default | awk '{print $3; exit}')
+  echo "Docker host gateway: $DOCKER_HOST"
 else
   pnpm dev:detach
+  DOCKER_HOST="localhost"
 fi
 
 # Function to cleanup dev server on script exit
@@ -28,7 +33,7 @@ echo "Waiting for dev servers..."
 START_TIME=$(date +%s)
 LAST_LOG_TIME=0
 while true; do
-  STATUS=$(curl -s -k -w "%{http_code}" https://localhost:8088/ -o /dev/null)
+  STATUS=$(curl -s -k -w "%{http_code}" "https://${DOCKER_HOST}:8088/" -o /dev/null)
   if [ "$STATUS" = "200" ]; then
     break
   fi
@@ -55,7 +60,7 @@ fi
 DOCKER_LOGS_PID=$!
 
 while true; do
-  RESPONSE=$(curl -s http://localhost:5173/send)
+  RESPONSE=$(curl -s "http://${DOCKER_HOST}:5173/send")
   if [ -n "$RESPONSE" ] && [[ "$RESPONSE" == *"<title>Thunderbird Send</title>"* ]]; then
     echo $RESPONSE
     break
