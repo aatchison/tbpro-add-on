@@ -2,10 +2,10 @@
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 
-# Install browser dependencies
+# Install browsers and system dependencies (--with-deps installs both in one step)
 echo "Installing browser dependencies..."
 cd "$REPO_ROOT/packages/send"
-pnpm exec playwright install
+pnpm exec playwright install --with-deps
 cd "$REPO_ROOT"
 
 pwd
