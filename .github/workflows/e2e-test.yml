@@ -18,7 +18,39 @@ permissions:
   contents: read
 
 jobs:
+  detect-changes:
+    runs-on: ubuntu-latest
+    env:
+      IS_CI_AUTOMATION: "yes"
+    outputs:
+      backend-changed: ${{ steps.check.outputs.backend-changed }}
+      frontend-changed: ${{ steps.check.outputs.frontend-changed }}
+      shared-changed: ${{ steps.check.outputs.shared-changed }}
+      e2e-infra-changed: ${{ steps.check.outputs.e2e-infra-changed }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - uses: dorny/paths-filter@v3
+        id: check
+        with:
+          filters: |
+            backend-changed:
+              - 'packages/send/backend/**'
+            frontend-changed:
+              - 'packages/send/frontend/**'
+            shared-changed:
+              - 'packages/shared/**'
+            e2e-infra-changed:
+              - 'compose.e2e.yml'
+              - 'scripts/e2e.sh'
+              - 'packages/send/e2e/**'
+
   end-to-end-tests:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.backend-changed == 'true' || needs.detect-changes.outputs.frontend-changed == 'true' || needs.detect-changes.outputs.shared-changed == 'true' || needs.detect-changes.outputs.e2e-infra-changed == 'true'
     runs-on: ubuntu-latest
     env:
       IS_CI_AUTOMATION: "yes"
