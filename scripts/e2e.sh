@@ -18,11 +18,11 @@ pwd
 
 # In GitHub Actions `container:` jobs the docker socket is mounted from the HOST,
 # so compose containers publish ports to the HOST's network, not to localhost inside
-# the devcontainer. Reach them via the bridge gateway IP.
-# In other DinD environments (devpod, local) the daemon is internal and published
-# ports ARE available on localhost.
-# We must detect the host BEFORE building containers so we can bake the correct
-# VITE_SEND_SERVER_URL into the frontend image (the browser uses this URL for API calls).
+# the container. Reach them via the bridge gateway IP for docker commands.
+# However, Playwright/Firefox must connect via 'localhost' because the TLS cert at
+# the reverse proxy is issued for 'localhost' only. We set up Node.js TCP proxies
+# (localhost:5173 -> DOCKER_HOST:5173, localhost:8088 -> DOCKER_HOST:8088) after
+# the stack is ready so the browser sees 'localhost' and the TLS cert matches.
 if [ "$IS_CI_AUTOMATION" = "yes" ]; then
   if [ "$GITHUB_ACTIONS" = "true" ]; then
     DOCKER_HOST=$(ip route show default | awk '{print $3; exit}')
@@ -31,21 +31,15 @@ if [ "$IS_CI_AUTOMATION" = "yes" ]; then
     DOCKER_HOST="localhost"
   fi
 
-  # Patch frontend .env so the browser-side JS calls the backend at the correct host.
-  # The default is https://localhost:8088 which only works when localhost reaches containers.
-  FRONTEND_ENV="$REPO_ROOT/packages/send/frontend/.env"
-  sed -i "s|^VITE_SEND_SERVER_URL=.*|VITE_SEND_SERVER_URL=https://${DOCKER_HOST}:8088|" "$FRONTEND_ENV"
-  sed -i "s|^VITE_SEND_CLIENT_URL=.*|VITE_SEND_CLIENT_URL=http://${DOCKER_HOST}:5173|" "$FRONTEND_ENV"
-  echo "Patched frontend .env: VITE_SEND_SERVER_URL=https://${DOCKER_HOST}:8088"
-
   BUILD_ENV=production docker compose -f "$REPO_ROOT/compose.ci.yml" up -d --build
-
-  # Point playwright at the correct host so it can reach the Vite dev server
-  export PLAYWRIGHT_BASE_URL="http://${DOCKER_HOST}:5173"
 else
   pnpm dev:detach
   DOCKER_HOST="localhost"
 fi
+
+# Playwright always uses localhost - via TCP proxy in GitHub Actions CI,
+# or directly in devpod/local where localhost reaches the servers.
+export PLAYWRIGHT_BASE_URL="http://localhost:5173"
 
 # Start docker logs in background immediately so we see container output during startup
 if [ "$IS_CI_AUTOMATION" = "yes" ]; then
@@ -58,6 +52,7 @@ DOCKER_LOGS_PID=$!
 # Function to cleanup dev server on script exit
 cleanup() {
   kill $DOCKER_LOGS_PID 2>/dev/null
+  [ -n "$TCP_PROXY_PID" ] && kill $TCP_PROXY_PID 2>/dev/null
 }
 trap cleanup INT TERM
 
@@ -108,6 +103,29 @@ while true; do
 done
 echo "Vite dev server is ready"
 
+# In GitHub Actions CI the containers are on the host bridge (DOCKER_HOST).
+# The TLS cert is issued for 'localhost' only, so direct connections to the bridge
+# IP cause Firefox to fail SSL even with ignoreHTTPSErrors (hostname mismatch).
+# Fix: run TCP proxies that forward localhost:{5173,8088} -> DOCKER_HOST:{5173,8088}.
+# Firefox then negotiates TLS with 'localhost' as the hostname, cert matches.
+# CORS also passes since the frontend origin becomes http://localhost:5173.
+if [ "$IS_CI_AUTOMATION" = "yes" ] && [ "$GITHUB_ACTIONS" = "true" ]; then
+  echo "Setting up TCP proxies: localhost:{5173,8088} -> ${DOCKER_HOST}:{5173,8088}"
+  node -e "
+const net = require('net');
+const host = process.argv[1];
+[[5173, 5173], [8088, 8088]].forEach(([lp, rp]) => {
+  net.createServer(c => {
+    const r = net.connect(rp, host);
+    c.pipe(r); r.pipe(c);
+    c.on('error', () => r.destroy());
+    r.on('error', () => c.destroy());
+  }).listen(lp, '127.0.0.1', () =>
+    process.stdout.write('Proxy ready: localhost:' + lp + ' -> ' + host + ':' + rp + '\n'));
+});" "${DOCKER_HOST}" &
+  TCP_PROXY_PID=$!
+  sleep 1  # allow proxies to bind before tests start
+fi
 
 # Firefox Nightly refuses to run as root when $HOME is not owned by root.
 # GitHub Actions sets HOME=/github/home (owned by uid 1001) but runs containers as root.

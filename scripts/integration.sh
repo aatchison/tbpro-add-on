@@ -83,8 +83,7 @@ done
 echo "Vite dev server is ready"
 
 # Run integration tests for send-backend
-echo "Installing vitest with npm"
-docker compose -f "$REPO_ROOT/compose.ci.yml" exec -T backend npm install vitest
+# vitest is already installed as a devDependency via pnpm during docker build
 echo "Running vitest"
 docker compose -f "$REPO_ROOT/compose.ci.yml" exec -T backend npx vitest run --config vitest.integration.config.js
 VITEST_EXIT_CODE=$?
