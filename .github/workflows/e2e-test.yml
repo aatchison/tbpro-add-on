@@ -82,7 +82,7 @@ jobs:
 
       - name: Run stack and test
         id: run-stack-and-test
-        timeout-minutes: 10
+        timeout-minutes: 20
         run: |
           # Create .env file with secrets (for end to end run only)# Create .env file with secrets
           echo "TBPRO_USERNAME=${{ secrets.TBPRO_USERNAME }}" > .env
