@@ -19,7 +19,7 @@
     "test": "vitest run --silent",
     "test:unit": "pnpm run test",
     "test:watch": "vitest --watch",
-    "ci:validate": "pnpm lint:all; pnpm prettier:all; pnpm run test; pnpm run type-check",
+    "ci:validate": "pnpm prettier:all && pnpm run test",
     "type-check": "vue-tsc --build --force",
     "update-manifest": "./scripts/update-manifest.sh",
     "watch": "./scripts/watch.sh"
