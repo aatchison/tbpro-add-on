@@ -30,7 +30,7 @@ ENV runtime_user=frontend
 ONBUILD RUN echo "Add runtime user"
 
 # Add runtime user
-RUN useradd ${runtime_user} -d /home/${runtime_user}
+RUN useradd ${runtime_user} -d /home/${runtime_user} -m
 # Chown /app to runtime_user
 RUN chown -Rf ${runtime_user} /app
 # Switch to runtime user

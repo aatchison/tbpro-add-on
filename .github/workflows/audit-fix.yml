@@ -32,7 +32,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pnpm install --filter @thunderbird/tbpro-add-on && lerna run bootstrap
+          pnpm install
 
       - name: Run pnpm audit --fix
         id: audit-fix
@@ -55,7 +55,7 @@ jobs:
       - name: Install dependencies after audit fix
         if: steps.check-changes.outputs.has-changes == 'true'
         run: |
-          pnpm install --filter @thunderbird/tbpro-add-on && lerna run bootstrap
+          pnpm install
 
       - name: Test send/backend
         if: steps.check-changes.outputs.has-changes == 'true'
@@ -79,12 +79,12 @@ jobs:
       - name: Test shared
         if: steps.check-changes.outputs.has-changes == 'true'
         run: |
-          lerna run test --scope=tbpro-shared
+          lerna run ci:validate --scope=tbpro-shared
 
       - name: Test assist/frontend
         if: steps.check-changes.outputs.has-changes == 'true'
         run: |
-          lerna run test:unit --scope=assist-frontend
+          lerna run ci:validate --scope=assist-frontend
 
       - name: Create Pull Request
         if: steps.check-changes.outputs.has-changes == 'true'

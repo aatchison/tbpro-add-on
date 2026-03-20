@@ -1,130 +1,74 @@
 {
+  "namedInputs": {
+    "default": ["{projectRoot}/**/*"],
+    "production": [
+      "default",
+      "!{projectRoot}/**/*.test.ts",
+      "!{projectRoot}/**/*.spec.ts",
+      "!{projectRoot}/**/test/**",
+      "!{projectRoot}/**/tests/**"
+    ]
+  },
   "targetDefaults": {
-    "prepare": {
-      "dependsOn": []
-    },
-    "build:frontend": {
-      "dependsOn": [],
-      "cache": true,
-      "outputs": [
-        "{projectRoot}/packages/send/frontend/dist,packages/send/frontend/dist-web"
-      ]
-    },
-    "build-image:backend": {
-      "dependsOn": [
-        "^build-image:backend"
-      ],
-      "outputs": [
-        "{projectRoot}/packages/send/backend/build"
-      ]
-    },
-    "sort-package-json": {
-      "dependsOn": []
-    },
-    "compare_envs": {
-      "dependsOn": []
-    },
-    "test:e2e": {
-      "dependsOn": []
-    },
-    "test:e2e:ui": {
-      "dependsOn": []
-    },
-    "test:e2e:ci": {
-      "dependsOn": []
-    },
-    "clean": {
-      "dependsOn": []
-    },
-    "predev": {
-      "dependsOn": []
-    },
-    "dev": {
-      "dependsOn": []
-    },
-    "dev:detach": {
-      "dependsOn": []
-    },
-    "setup": {
-      "dependsOn": []
-    },
-    "setup:local": {
-      "dependsOn": []
-    },
     "build": {
-      "dependsOn": [],
-      "cache": true
-    },
-    "ci:validate": {
-      "dependsOn": []
-    },
-    "db:browse": {
-      "dependsOn": []
-    },
-    "db:generate": {
-      "dependsOn": []
-    },
-    "db:migrate": {
-      "dependsOn": []
-    },
-    "db:reset": {
-      "dependsOn": []
-    },
-    "db:update": {
-      "dependsOn": []
-    },
-    "debug": {
-      "dependsOn": []
-    },
-    "debug:attach": {
-      "dependsOn": []
-    },
-    "lint:all": {
-      "dependsOn": [],
-      "cache": true
-    },
-    "prettier:all": {
-      "dependsOn": [],
-      "cache": true
-    },
-    "release": {
-      "dependsOn": []
-    },
-    "sentry:sourcemaps": {
-      "dependsOn": []
-    },
-    "prestart": {
-      "dependsOn": []
-    },
-    "start": {
-      "dependsOn": []
-    },
-    "test:watch": {
-      "dependsOn": []
-    },
-    "typecheck": {
-      "dependsOn": [],
+      "dependsOn": ["^build"],
+      "inputs": ["production"],
       "cache": true
     },
     "build:dev": {
-      "dependsOn": [],
+      "dependsOn": ["^build"],
+      "inputs": ["production"],
       "cache": true
     },
-    "build:watch": {
-      "dependsOn": []
+    "build:shared": {
+      "inputs": ["production"],
+      "cache": true
+    },
+    "build:frontend": {
+      "dependsOn": ["^build"],
+      "cache": true,
+      "outputs": [
+        "{projectRoot}/dist",
+        "{projectRoot}/dist-web"
+      ]
+    },
+    "build-image:backend": {
+      "dependsOn": ["^build-image:backend"],
+      "outputs": [
+        "{projectRoot}/build"
+      ]
+    },
+    "test": {
+      "dependsOn": ["^build"],
+      "cache": true
+    },
+    "ci:validate": {
+      "dependsOn": ["^build"],
+      "cache": true
+    },
+    "lint:all": {
+      "cache": true
+    },
+    "prettier:all": {
+      "cache": true
+    },
+    "typecheck": {
+      "dependsOn": ["^build"],
+      "cache": true
     },
     "deploy-xpi": {
-      "dependsOn": [],
+      "dependsOn": ["build"],
       "cache": true
     },
-    "preview": {
-      "dependsOn": []
-    },
-    "test-debug": {
-      "dependsOn": []
-    },
-    "postversion": {
-      "dependsOn": []
-    }
+    "sort-package-json": {},
+    "compare_envs": {},
+    "test:e2e": {},
+    "test:e2e:ui": {},
+    "test:e2e:ci": {},
+    "dev": {},
+    "preview": {},
+    "build:watch": {},
+    "test:watch": {},
+    "test-debug": {}
   }
 }

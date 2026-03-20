@@ -8,7 +8,7 @@
   "types": "src/index.ts",
   "scripts": {
     "build:shared": "tsc",
-    "ci:validate": "pnpm lint:all; pnpm prettier:all",
+    "ci:validate": "pnpm lint:all; pnpm prettier:all; pnpm run test",
     "test": "VITE_TESTING=true vitest run --silent",
     "test-debug": "VITE_TESTING=true vitest --inspect-brk --single-thread",
     "test:watch": "VITE_TESTING=true vitest --watch",
@@ -17,12 +17,12 @@
     "postinstall": "pnpm build:shared"
   },
   "dependencies": {
-    "@tanstack/vue-query": "*",
-    "dayjs": "*",
+    "@tanstack/vue-query": "catalog:",
+    "dayjs": "catalog:",
     "get-random-values": "^3.0.0",
     "oidc-client-ts": "^3.3.0",
-    "pinia": "*",
-    "vue": "*"
+    "pinia": "catalog:",
+    "vue": "catalog:"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
@@ -31,23 +31,22 @@
     "@types/thunderbird-webext-browser": "^127.0.0",
     "@typescript-eslint/parser": "^8.56.1",
     "@vitejs/plugin-vue": "^6.0.3",
-    "@vitest/coverage-v8": "*",
-    "dotenv": "*",
-    "eslint": "^10.0.2",
+    "@vitest/coverage-v8": "catalog:",
+    "dotenv": "^16.4.7",
+    "eslint": "catalog:",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-vue": "^10.8.0",
     "globals": "^17.3.0",
-    "prettier": "^3.8.1",
-    "typescript": "*",
+    "prettier": "catalog:",
+    "typescript": "catalog:",
     "typescript-eslint": "^8.56.1",
-    "vite": ">=6.4.1",
-    "vitest": "*",
+    "vite": "catalog:",
+    "vitest": "catalog:",
     "webextension-polyfill": "^0.12.0"
   },
   "keywords": [],
   "author": "",
   "license": "MPL-2.0",
-  "packageManager": "pnpm@10.7.1",
   "exports": {
     ".": {
       "import": "./src/index",

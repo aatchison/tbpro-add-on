@@ -1,5 +1,4 @@
 packages:
-  - packages/assist
   - packages/assist/frontend
   - packages/send
   - packages/send/backend
@@ -7,6 +6,20 @@ packages:
   - packages/send/e2e
   - packages/shared
   - packages/addon
+
+catalog:
+  '@tanstack/vue-query': ^5.72.1
+  '@vitejs/plugin-vue': ^6.0.3
+  '@vitest/coverage-v8': ^3.2.3
+  '@vue/test-utils': ^2.4.6
+  dayjs: ^1.11.13
+  eslint: ^10.0.2
+  pinia: ^2.3.1
+  prettier: ^3.8.1
+  typescript: ~5.8.3
+  vite: '>=6.4.1'
+  vitest: ^3.2.3
+  vue: ^3.5.13
 
 overrides:
   '@eslint/plugin-kit@<0.3.4': '>=0.3.4'

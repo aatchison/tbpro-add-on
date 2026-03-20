@@ -27,6 +27,7 @@ jobs:
       frontend-changed: ${{ steps.check.outputs.frontend-changed }}
       shared-changed: ${{ steps.check.outputs.shared-changed }}
       addon-changed: ${{ steps.check.outputs.addon-changed }}
+      assist-frontend-changed: ${{ steps.check.outputs.assist-frontend-changed }}
     steps:
       - uses: actions/checkout@v4
       - uses: dorny/paths-filter@v3
@@ -44,6 +45,8 @@ jobs:
               - 'packages/shared/**'
             addon-changed:
               - 'packages/addon/**'
+            assist-frontend-changed:
+              - 'packages/assist/frontend/**'
 
   # When the backend code changes, run these steps
   backend-tests:
@@ -60,7 +63,7 @@ jobs:
       - name: Install dependencies
         id: install-dependencies
         run: |
-          pnpm install --filter @thunderbird/tbpro-add-on && lerna run bootstrap
+          pnpm install
           cd packages/send
           pnpm install --filter send-backend
 
@@ -119,10 +122,7 @@ jobs:
       - name: Install dependencies
         id: install-dependencies
         run: |
-          pnpm install --filter @thunderbird/tbpro-add-on && lerna run bootstrap
-          pnpm install --filter tbpro-shared
-          pnpm install --filter send-frontend
-          pnpm install --filter send-backend
+          pnpm install
           lerna run db:generate --scope=send-backend
 
       - name: Create .env file so tests will work
@@ -157,14 +157,12 @@ jobs:
       - name: Install dependencies
         id: install-dependencies
         run: |
-          pnpm install --filter @thunderbird/tbpro-add-on && lerna run bootstrap
-          pnpm install --filter tbpro-shared
-          pnpm install --filter send-backend
+          pnpm install
 
       - name: Shared package tests and lint
         id: shared-tests
         run: |
-          lerna run test --scope=tbpro-shared
+          lerna run ci:validate --scope=tbpro-shared
 
   # When the addon package code changes, run these steps
   addon-changes:
@@ -193,14 +191,30 @@ jobs:
       - name: Install dependencies
         id: install-dependencies
         run: |
-          pnpm install --filter @thunderbird/tbpro-add-on && lerna run bootstrap
-          # install packages that addon depends on
-          pnpm install --filter tbpro-shared
-          pnpm install --filter send-frontend
-          pnpm install --filter addon
+          pnpm install
 
-      - name: Shared package tests and lint
-        id: shared-tests
+      - name: Addon tests and lint
+        id: addon-tests
         run: |
           lerna run ci:validate --scope=addon
-          lerna run test --scope=addon
+
+  # When the assist-frontend code changes, run these steps
+  assist-frontend-changes:
+    needs: detect-changes
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/${{ github.repository }}/cached-devcontainer:latest
+    env:
+      IS_CI_AUTOMATION: "yes"
+    if: needs.detect-changes.outputs.assist-frontend-changed == 'true'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install dependencies
+        id: install-dependencies
+        run: |
+          pnpm install
+
+      - name: Assist frontend tests and lint
+        id: assist-frontend-tests
+        run: |
+          lerna run ci:validate --scope=assist-frontend

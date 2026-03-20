@@ -7,10 +7,9 @@ echo "🐺 Running pre commit hooks..."
 echo "🔍 Checking that env vars match..."
 lerna run compare_envs
 
-# Running tests
+# Running tests (parallelized via Nx)
 echo "🧪 Running tests..."
-lerna run test --scope=send-frontend
-lerna run test --scope=send-backend
+lerna run test --scope=send-frontend --scope=send-backend
 
 # Run lint-staged on frontend
 echo "🧶 Running lint-staged on frontend..."

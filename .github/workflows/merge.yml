@@ -77,8 +77,7 @@ jobs:
         # if: needs.detect-changes.outputs.backend-changed == 'true'
         id: install-pnpm-build
         run: |
-          pnpm install --filter @thunderbird/tbpro-add-on && lerna run bootstrap
-          pnpm install --filter send-backend
+          pnpm install
           lerna run build-image:backend --scope=send-suite
 
       - name: Configure AWS credentials
@@ -218,8 +217,7 @@ jobs:
         # if: needs.detect-changes.outputs.frontend-changed == 'true'
         id: install-pnpm-build
         run: |
-          pnpm install --filter @thunderbird/tbpro-add-on && lerna run bootstrap
-          pnpm install --filter send-frontend
+          pnpm install
           lerna run build --scope=send-suite
 
       # Front end build env configuration
@@ -260,9 +258,7 @@ jobs:
           echo "Building for environment: ${{ matrix.env }}"
           set -x
           # Initial setup of dependencies
-          pnpm install --filter @thunderbird/tbpro-add-on && lerna run bootstrap
-          pnpm install --filter tbpro-shared
-          pnpm install --filter send-frontend
+          pnpm install
           cd packages/send/frontend
 
           # Build static frontend assets and the .xpi
@@ -405,9 +401,7 @@ jobs:
           IS_CI_AUTOMATION: yes
         run: |
           # install packages that addon depends on
-          pnpm install --filter tbpro-shared
-          pnpm install --filter addon
-          pnpm install --filter send-frontend
+          pnpm install
 
           lerna run build --scope=addon
 
@@ -455,9 +449,7 @@ jobs:
           IS_CI_AUTOMATION: yes
         run: |
           # install packages that addon depends on
-          pnpm install --filter tbpro-shared
-          pnpm install --filter addon
-          pnpm install --filter send-frontend
+          pnpm install
 
           lerna run build --scope=addon
 

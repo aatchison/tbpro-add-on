@@ -53,9 +53,7 @@ jobs:
       - name: Set up environments and install dependencies
         id: setup-and-install-dependencies
         run: |
-          pnpm install --filter @thunderbird/tbpro-add-on && lerna run bootstrap
-          pnpm install --filter tbpro-shared
-          pnpm i --filter "send-*"
+          pnpm install
 
           cd packages/send
           # Setup local environment (use public login)
