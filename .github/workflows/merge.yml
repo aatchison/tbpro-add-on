@@ -519,27 +519,27 @@ jobs:
           fi
           echo "version=$version" >> "$GITHUB_OUTPUT"
 
-      - name: Download backend release artifact
-        if: needs.detect-changes.outputs.backend-changed == 'true'
-        uses: actions/download-artifact@v4
-        with:
-          name: ecr_tag
-          path: release-assets/ecr_tag
+      # - name: Download backend release artifact
+      #   if: needs.detect-changes.outputs.backend-changed == 'true'
+      #   uses: actions/download-artifact@v4
+      #   with:
+      #     name: ecr_tag
+      #     path: release-assets/ecr_tag
 
-      - name: Download frontend production artifact
-        if: needs.detect-changes.outputs.frontend-changed == 'true'
-        uses: actions/download-artifact@v4
-        with:
-          name: dist-web-prod
-          path: release-assets/dist-web-prod
+      # - name: Download frontend production artifact
+      #   if: needs.detect-changes.outputs.frontend-changed == 'true'
+      #   uses: actions/download-artifact@v4
+      #   with:
+      #     name: dist-web-prod
+      #     path: release-assets/dist-web-prod
 
-      - name: Download addon production artifact
-        if: needs.detect-changes.outputs.frontend-changed == 'true' || needs.detect-changes.outputs.addon-changed == 'true'
-        uses: actions/download-artifact@v4
-        with:
-          pattern: tbpro-addon-prod-*
-          path: release-assets/addon
-          merge-multiple: true
+      # - name: Download addon production artifact
+      #   if: needs.detect-changes.outputs.frontend-changed == 'true' || needs.detect-changes.outputs.addon-changed == 'true'
+      #   uses: actions/download-artifact@v4
+      #   with:
+      #     pattern: tbpro-addon-prod-*
+      #     path: release-assets/addon
+      #     merge-multiple: true
 
       - name: Package release assets
         run: |
