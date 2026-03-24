@@ -64,440 +64,440 @@ jobs:
             addon-changed:
               - 'packages/addon/**'
 
-  backend-build-stage:
-    needs: detect-changes
-    if: needs.detect-changes.outputs.backend-changed == 'true'
-    runs-on: ubuntu-latest
-    outputs:
-      backend-image: ${{ steps.build-backend.outputs.backend-image }}
-    container:
-      image: ghcr.io/${{ github.repository }}/cached-devcontainer:latest
-    env:
-      IS_CI_AUTOMATION: "yes"
-    environment: send-stage
-    steps:
-      - name: test echo
-        run: |
-          echo "Building backend with changes: ${{ needs.detect-changes.outputs.backend-changed }} and iac changes: ${{ needs.detect-changes.outputs.iac-changed }}"
-          date
+  # backend-build-stage:
+  #   needs: detect-changes
+  #   if: needs.detect-changes.outputs.backend-changed == 'true'
+  #   runs-on: ubuntu-latest
+  #   outputs:
+  #     backend-image: ${{ steps.build-backend.outputs.backend-image }}
+  #   container:
+  #     image: ghcr.io/${{ github.repository }}/cached-devcontainer:latest
+  #   env:
+  #     IS_CI_AUTOMATION: "yes"
+  #   environment: send-stage
+  #   steps:
+  #     - name: test echo
+  #       run: |
+  #         echo "Building backend with changes: ${{ needs.detect-changes.outputs.backend-changed }} and iac changes: ${{ needs.detect-changes.outputs.iac-changed }}"
+  #         date
 
-      - uses: actions/checkout@v4
+  #     - uses: actions/checkout@v4
 
-      - name: Install pnpm and build package
-        # if: needs.detect-changes.outputs.backend-changed == 'true'
-        id: install-pnpm-build
-        run: |
-          pnpm install --filter @thunderbird/tbpro-add-on && lerna run bootstrap
-          pnpm install --filter send-backend
-          lerna run build-image:backend --scope=send-suite
+  #     - name: Install pnpm and build package
+  #       # if: needs.detect-changes.outputs.backend-changed == 'true'
+  #       id: install-pnpm-build
+  #       run: |
+  #         pnpm install --filter @thunderbird/tbpro-add-on && lerna run bootstrap
+  #         pnpm install --filter send-backend
+  #         lerna run build-image:backend --scope=send-suite
 
-      - name: Configure AWS credentials
-        # if: needs.detect-changes.outputs.backend-changed == 'true'
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-region: us-east-1
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+  #     - name: Configure AWS credentials
+  #       # if: needs.detect-changes.outputs.backend-changed == 'true'
+  #       uses: aws-actions/configure-aws-credentials@v4
+  #       with:
+  #         aws-region: us-east-1
+  #         aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+  #         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
-      - name: Login to Amazon ECR
-        # if: needs.detect-changes.outputs.backend-changed == 'true'
-        id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v2
-        with:
-          mask-password: "true"
+  #     - name: Login to Amazon ECR
+  #       # if: needs.detect-changes.outputs.backend-changed == 'true'
+  #       id: login-ecr
+  #       uses: aws-actions/amazon-ecr-login@v2
+  #       with:
+  #         mask-password: "true"
 
-      - name: Build, tag, and push backend image to Amazon ECR
-        # if: needs.detect-changes.outputs.backend-changed == 'true'
-        id: build-backend
-        env:
-          ECR_TAG: "${{ steps.login-ecr.outputs.registry }}/${{ vars.PROJECT }}:${{ github.sha }}"
-        run: |
-          # Build a docker container and push it to ECR so that it can be deployed to ECS.
-          docker build -t "$ECR_TAG" ./packages/send/backend/build
-          docker push "$ECR_TAG"
-          echo "backend-image=$ECR_TAG" >> "$GITHUB_OUTPUT"
-          echo -n "$ECR_TAG" > ecr_tag.txt
+  #     - name: Build, tag, and push backend image to Amazon ECR
+  #       # if: needs.detect-changes.outputs.backend-changed == 'true'
+  #       id: build-backend
+  #       env:
+  #         ECR_TAG: "${{ steps.login-ecr.outputs.registry }}/${{ vars.PROJECT }}:${{ github.sha }}"
+  #       run: |
+  #         # Build a docker container and push it to ECR so that it can be deployed to ECS.
+  #         docker build -t "$ECR_TAG" ./packages/send/backend/build
+  #         docker push "$ECR_TAG"
+  #         echo "backend-image=$ECR_TAG" >> "$GITHUB_OUTPUT"
+  #         echo -n "$ECR_TAG" > ecr_tag.txt
 
-      - name: Archive the ECR tag
-        # if: needs.detect-changes.outputs.backend-changed == 'true'
-        id: tag-archive
-        uses: actions/upload-artifact@v4
-        with:
-          name: ecr_tag
-          path: ecr_tag.txt
+  #     - name: Archive the ECR tag
+  #       # if: needs.detect-changes.outputs.backend-changed == 'true'
+  #       id: tag-archive
+  #       uses: actions/upload-artifact@v4
+  #       with:
+  #         name: ecr_tag
+  #         path: ecr_tag.txt
 
-  backend-deploy-stage-aws:
-    needs: ["backend-build-stage", "detect-changes"]
-    if: needs.detect-changes.outputs.backend-changed == 'true'
-    runs-on: ubuntu-latest
-    container:
-      image: ghcr.io/${{ github.repository }}/cached-devcontainer:latest
-    env:
-      IS_CI_AUTOMATION: "yes"
-    environment: send-stage
-    outputs:
-      ecs_deployed: ${{ steps.wait-deployment.outputs.ecs_deployed }}
+  # backend-deploy-stage-aws:
+  #   needs: ["backend-build-stage", "detect-changes"]
+  #   if: needs.detect-changes.outputs.backend-changed == 'true'
+  #   runs-on: ubuntu-latest
+  #   container:
+  #     image: ghcr.io/${{ github.repository }}/cached-devcontainer:latest
+  #   env:
+  #     IS_CI_AUTOMATION: "yes"
+  #   environment: send-stage
+  #   outputs:
+  #     ecs_deployed: ${{ steps.wait-deployment.outputs.ecs_deployed }}
 
-    steps:
-      - uses: actions/checkout@v4
+  #   steps:
+  #     - uses: actions/checkout@v4
       
-      - name: "Test echo"
-        run: |
-          echo "Deploying backend with image ${{ needs.backend-build-stage.outputs.backend-image }}"
-          date
+  #     - name: "Test echo"
+  #       run: |
+  #         echo "Deploying backend with image ${{ needs.backend-build-stage.outputs.backend-image }}"
+  #         date
 
-      - name: Configure AWS credentials
-        # if: needs.detect-changes.outputs.backend-changed == 'true'
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-region: eu-central-1
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+  #     - name: Configure AWS credentials
+  #       # if: needs.detect-changes.outputs.backend-changed == 'true'
+  #       uses: aws-actions/configure-aws-credentials@v4
+  #       with:
+  #         aws-region: eu-central-1
+  #         aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+  #         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
-      - name: Deploy new image to stage
-        # if: needs.detect-changes.outputs.backend-changed == 'true'
-        env:
-          ECR_TAG: "${{ needs.backend-build-stage.outputs.backend-image }}"
-          PULUMI_ACCESS_TOKEN: "${{ secrets.PULUMI_ACCESS_TOKEN }}"
-        run: |
-          # Update the PATH to include the right version of Pulumi; this is non-trivial or impossible
-          # to do with the GHA workflow "env" settings above.
-          export PATH="/home/runner/.pulumi/bin:$PATH"
+  #     - name: Deploy new image to stage
+  #       # if: needs.detect-changes.outputs.backend-changed == 'true'
+  #       env:
+  #         ECR_TAG: "${{ needs.backend-build-stage.outputs.backend-image }}"
+  #         PULUMI_ACCESS_TOKEN: "${{ secrets.PULUMI_ACCESS_TOKEN }}"
+  #       run: |
+  #         # Update the PATH to include the right version of Pulumi; this is non-trivial or impossible
+  #         # to do with the GHA workflow "env" settings above.
+  #         export PATH="/home/runner/.pulumi/bin:$PATH"
 
-          cd packages/send/pulumi
+  #         cd packages/send/pulumi
 
-          # Create a YAML config stump containing only the nested tree leading to the image tag update
-          cat << EOF > newimage.yaml
-          resources:
-            tb:fargate:FargateClusterWithLogging:
-              backend:
-                task_definition:
-                  container_definitions:
-                    backend:
-                      image: "$ECR_TAG"
-          EOF
+  #         # Create a YAML config stump containing only the nested tree leading to the image tag update
+  #         cat << EOF > newimage.yaml
+  #         resources:
+  #           tb:fargate:FargateClusterWithLogging:
+  #             backend:
+  #               task_definition:
+  #                 container_definitions:
+  #                   backend:
+  #                     image: "$ECR_TAG"
+  #         EOF
 
-          # Use yq to merge the stump into the main config
-          yq -i '. *= load("newimage.yaml")' config.stage.yaml
+  #         # Use yq to merge the stump into the main config
+  #         yq -i '. *= load("newimage.yaml")' config.stage.yaml
 
-          # Set up the Pulumi environment and update the service
-          export PULUMI_CONFIG_PASSPHRASE="${{ secrets.PULUMI_PASSPHRASE_STAGE }}"
-          pulumi login
-          pulumi stack select stage
-          pulumi up -y --diff --target \
-            "urn:pulumi:stage::send-suite::tb:fargate:FargateClusterWithLogging\$aws:ecs/taskDefinition:TaskDefinition::send-suite-stage-fargate-taskdef" \
-            --target-dependents
+  #         # Set up the Pulumi environment and update the service
+  #         export PULUMI_CONFIG_PASSPHRASE="${{ secrets.PULUMI_PASSPHRASE_STAGE }}"
+  #         pulumi login
+  #         pulumi stack select stage
+  #         pulumi up -y --diff --target \
+  #           "urn:pulumi:stage::send-suite::tb:fargate:FargateClusterWithLogging\$aws:ecs/taskDefinition:TaskDefinition::send-suite-stage-fargate-taskdef" \
+  #           --target-dependents
 
-      - name: Wait for ecs to update the service
-        id: wait-deployment
-        # if: needs.detect-changes.outputs.backend-changed == 'true'
-        run: |
-          aws ecs wait services-stable --region eu-central-1 --cluster send-suite-stage-fargate --services send-suite-stage-fargate
-          echo "ecs_deployed=true" >> "$GITHUB_OUTPUT"
+  #     - name: Wait for ecs to update the service
+  #       id: wait-deployment
+  #       # if: needs.detect-changes.outputs.backend-changed == 'true'
+  #       run: |
+  #         aws ecs wait services-stable --region eu-central-1 --cluster send-suite-stage-fargate --services send-suite-stage-fargate
+  #         echo "ecs_deployed=true" >> "$GITHUB_OUTPUT"
 
-  frontend-build:
-    needs: detect-changes
-    if: needs.detect-changes.outputs.frontend-changed == 'true'
-    runs-on: ubuntu-latest
-    container:
-      image: ghcr.io/${{ github.repository }}/cached-devcontainer:latest
-    env:
-      IS_CI_AUTOMATION: "yes"
-    environment: send-stage
-    strategy:
-      matrix:
-        env: ["stage", "prod"]
-        include:
-          - env: "stage"
-            base_url: "https://send-stage.tb.pro"
-            send_server_url: "https://send-backend-stage.tb.pro"
-            send_client_url: "https://send-stage.tb.pro"
-          - env: "prod"
-            base_url: "https://send.tb.pro"
-            send_server_url: "https://send-backend.tb.pro"
-            send_client_url: "https://send.tb.pro"
-    steps:
-      - name: test echo
-        run: |
-          echo "Building frontend for environment ${{ matrix.env }} with base URL ${{ matrix.base_url }}"
-          date
+  # frontend-build:
+  #   needs: detect-changes
+  #   if: needs.detect-changes.outputs.frontend-changed == 'true'
+  #   runs-on: ubuntu-latest
+  #   container:
+  #     image: ghcr.io/${{ github.repository }}/cached-devcontainer:latest
+  #   env:
+  #     IS_CI_AUTOMATION: "yes"
+  #   environment: send-stage
+  #   strategy:
+  #     matrix:
+  #       env: ["stage", "prod"]
+  #       include:
+  #         - env: "stage"
+  #           base_url: "https://send-stage.tb.pro"
+  #           send_server_url: "https://send-backend-stage.tb.pro"
+  #           send_client_url: "https://send-stage.tb.pro"
+  #         - env: "prod"
+  #           base_url: "https://send.tb.pro"
+  #           send_server_url: "https://send-backend.tb.pro"
+  #           send_client_url: "https://send.tb.pro"
+  #   steps:
+  #     - name: test echo
+  #       run: |
+  #         echo "Building frontend for environment ${{ matrix.env }} with base URL ${{ matrix.base_url }}"
+  #         date
 
-      - uses: actions/checkout@v4
+  #     - uses: actions/checkout@v4
 
-      - name: Install pnpm and build package
-        # if: needs.detect-changes.outputs.frontend-changed == 'true'
-        id: install-pnpm-build
-        run: |
-          pnpm install --filter @thunderbird/tbpro-add-on && lerna run bootstrap
-          pnpm install --filter send-frontend
-          lerna run build --scope=send-suite
+  #     - name: Install pnpm and build package
+  #       # if: needs.detect-changes.outputs.frontend-changed == 'true'
+  #       id: install-pnpm-build
+  #       run: |
+  #         pnpm install --filter @thunderbird/tbpro-add-on && lerna run bootstrap
+  #         pnpm install --filter send-frontend
+  #         lerna run build --scope=send-suite
 
-      # Front end build env configuration
-      - name: Create .env file from secrets
-        # if: needs.detect-changes.outputs.frontend-changed == 'true'
-        env:
-          SENTRY_AUTH_TOKEN: ${{ matrix.env == 'stage' && secrets.VITE_SENTRY_AUTH_TOKEN_STAGE || secrets.VITE_SENTRY_AUTH_TOKEN_PROD }}
-          SENTRY_DSN:        ${{ matrix.env == 'stage' && vars.VITE_SENTRY_DSN_STAGE || vars.VITE_SENTRY_DSN_PROD }}
-          POSTHOG_KEY:       ${{ matrix.env == 'stage' && secrets.VITE_POSTHOG_PROJECT_KEY_STAGE || secrets.VITE_POSTHOG_PROJECT_KEY_PROD }}
-          POSTHOG_HOST:      ${{ matrix.env == 'stage' && vars.VITE_POSTHOG_HOST_STAGE || vars.VITE_POSTHOG_HOST_PROD }}
-          OIDC_CLIENT_ID:    ${{ matrix.env == 'stage' && secrets.VITE_OIDC_CLIENT_ID_STAGE || secrets.VITE_OIDC_CLIENT_ID_PROD }}
-          OIDC_ROOT_URL:     ${{ matrix.env == 'stage' && secrets.VITE_OIDC_ROOT_URL_STAGE || secrets.VITE_OIDC_ROOT_URL_PROD }}
-          BASE_URL:          ${{ matrix.base_url }}
-          SEND_SERVER_URL:   ${{ matrix.send_server_url }}
-          SEND_CLIENT_URL:   ${{ matrix.send_client_url }}
-        run: |
-          echo "Environment: ${{ matrix.env }}"
-          cd packages/send/frontend
-          cat <<EOF > .env
-          VUE_BASE_URL=${BASE_URL}
-          VITE_SEND_SERVER_URL=${SEND_SERVER_URL}
-          VITE_SEND_CLIENT_URL=${SEND_CLIENT_URL}
-          VITE_SENTRY_AUTH_TOKEN=${SENTRY_AUTH_TOKEN}
-          VITE_SENTRY_DSN=${SENTRY_DSN}
-          VITE_POSTHOG_PROJECT_KEY=${POSTHOG_KEY}
-          VITE_POSTHOG_HOST=${POSTHOG_HOST}
-          VITE_OIDC_CLIENT_ID=${OIDC_CLIENT_ID}
-          VITE_OIDC_ROOT_URL=${OIDC_ROOT_URL}
-          EOF
+  #     # Front end build env configuration
+  #     - name: Create .env file from secrets
+  #       # if: needs.detect-changes.outputs.frontend-changed == 'true'
+  #       env:
+  #         SENTRY_AUTH_TOKEN: ${{ matrix.env == 'stage' && secrets.VITE_SENTRY_AUTH_TOKEN_STAGE || secrets.VITE_SENTRY_AUTH_TOKEN_PROD }}
+  #         SENTRY_DSN:        ${{ matrix.env == 'stage' && vars.VITE_SENTRY_DSN_STAGE || vars.VITE_SENTRY_DSN_PROD }}
+  #         POSTHOG_KEY:       ${{ matrix.env == 'stage' && secrets.VITE_POSTHOG_PROJECT_KEY_STAGE || secrets.VITE_POSTHOG_PROJECT_KEY_PROD }}
+  #         POSTHOG_HOST:      ${{ matrix.env == 'stage' && vars.VITE_POSTHOG_HOST_STAGE || vars.VITE_POSTHOG_HOST_PROD }}
+  #         OIDC_CLIENT_ID:    ${{ matrix.env == 'stage' && secrets.VITE_OIDC_CLIENT_ID_STAGE || secrets.VITE_OIDC_CLIENT_ID_PROD }}
+  #         OIDC_ROOT_URL:     ${{ matrix.env == 'stage' && secrets.VITE_OIDC_ROOT_URL_STAGE || secrets.VITE_OIDC_ROOT_URL_PROD }}
+  #         BASE_URL:          ${{ matrix.base_url }}
+  #         SEND_SERVER_URL:   ${{ matrix.send_server_url }}
+  #         SEND_CLIENT_URL:   ${{ matrix.send_client_url }}
+  #       run: |
+  #         echo "Environment: ${{ matrix.env }}"
+  #         cd packages/send/frontend
+  #         cat <<EOF > .env
+  #         VUE_BASE_URL=${BASE_URL}
+  #         VITE_SEND_SERVER_URL=${SEND_SERVER_URL}
+  #         VITE_SEND_CLIENT_URL=${SEND_CLIENT_URL}
+  #         VITE_SENTRY_AUTH_TOKEN=${SENTRY_AUTH_TOKEN}
+  #         VITE_SENTRY_DSN=${SENTRY_DSN}
+  #         VITE_POSTHOG_PROJECT_KEY=${POSTHOG_KEY}
+  #         VITE_POSTHOG_HOST=${POSTHOG_HOST}
+  #         VITE_OIDC_CLIENT_ID=${OIDC_CLIENT_ID}
+  #         VITE_OIDC_ROOT_URL=${OIDC_ROOT_URL}
+  #         EOF
 
-      - name: Build frontend assets
-        if: needs.detect-changes.outputs.frontend-changed == 'true'
-        id: frontend-build
-        env:
-          BASE_URL: ${{ matrix.base_url }}
-          IS_CI_AUTOMATION: yes
-        run: |
-          echo "Building for environment: ${{ matrix.env }}"
-          set -x
-          # Initial setup of dependencies
-          pnpm install --filter @thunderbird/tbpro-add-on && lerna run bootstrap
-          pnpm install --filter tbpro-shared
-          pnpm install --filter send-frontend
-          cd packages/send/frontend
+  #     - name: Build frontend assets
+  #       if: needs.detect-changes.outputs.frontend-changed == 'true'
+  #       id: frontend-build
+  #       env:
+  #         BASE_URL: ${{ matrix.base_url }}
+  #         IS_CI_AUTOMATION: yes
+  #       run: |
+  #         echo "Building for environment: ${{ matrix.env }}"
+  #         set -x
+  #         # Initial setup of dependencies
+  #         pnpm install --filter @thunderbird/tbpro-add-on && lerna run bootstrap
+  #         pnpm install --filter tbpro-shared
+  #         pnpm install --filter send-frontend
+  #         cd packages/send/frontend
 
-          # Build static frontend assets and the .xpi
-          pnpm build
-          mv dist-web ../dist-web-${{ matrix.env }}
-          cd ..
-          mv "$(find send-suite-*.xpi)" "send-suite-${{ matrix.env }}-$(basename "$(find send-suite-*.xpi)" | cut -d'-' -f3-)"
-          ls -l send-suite-${{ matrix.env }}-*.xpi
+  #         # Build static frontend assets and the .xpi
+  #         pnpm build
+  #         mv dist-web ../dist-web-${{ matrix.env }}
+  #         cd ..
+  #         mv "$(find send-suite-*.xpi)" "send-suite-${{ matrix.env }}-$(basename "$(find send-suite-*.xpi)" | cut -d'-' -f3-)"
+  #         ls -l send-suite-${{ matrix.env }}-*.xpi
 
-      - name: Archive the ${{ matrix.env }} frontend build
-        if: needs.detect-changes.outputs.frontend-changed == 'true'
-        id: frontend-archive-stage
-        uses: actions/upload-artifact@v4
-        with:
-          name: dist-web-${{ matrix.env }}
-          path: packages/send/dist-web-${{ matrix.env }}
-          compression-level: 0
+  #     - name: Archive the ${{ matrix.env }} frontend build
+  #       if: needs.detect-changes.outputs.frontend-changed == 'true'
+  #       id: frontend-archive-stage
+  #       uses: actions/upload-artifact@v4
+  #       with:
+  #         name: dist-web-${{ matrix.env }}
+  #         path: packages/send/dist-web-${{ matrix.env }}
+  #         compression-level: 0
 
-      - name: Archive the ${{ matrix.env }} XPI
-        if: needs.detect-changes.outputs.frontend-changed == 'true'
-        id: xpi-archive-stage
-        uses: actions/upload-artifact@v4
-        with:
-          name: xpi-${{ matrix.env }}
-          path: packages/send/send-suite-${{ matrix.env }}-*.xpi
+  #     - name: Archive the ${{ matrix.env }} XPI
+  #       if: needs.detect-changes.outputs.frontend-changed == 'true'
+  #       id: xpi-archive-stage
+  #       uses: actions/upload-artifact@v4
+  #       with:
+  #         name: xpi-${{ matrix.env }}
+  #         path: packages/send/send-suite-${{ matrix.env }}-*.xpi
 
-  frontend-deploy-stage-aws:
-    needs: ["frontend-build","detect-changes"]
-    if: needs.detect-changes.outputs.frontend-changed == 'true'
-    runs-on: ubuntu-latest
-    container:
-      image: ghcr.io/${{ github.repository }}/cached-devcontainer:latest
-    environment: send-stage
-    outputs:
-      s3_deployed: ${{ steps.frontend-deploy.outputs.s3_deployed }}
-    steps:
-      - uses: actions/checkout@v4
+  # frontend-deploy-stage-aws:
+  #   needs: ["frontend-build","detect-changes"]
+  #   if: needs.detect-changes.outputs.frontend-changed == 'true'
+  #   runs-on: ubuntu-latest
+  #   container:
+  #     image: ghcr.io/${{ github.repository }}/cached-devcontainer:latest
+  #   environment: send-stage
+  #   outputs:
+  #     s3_deployed: ${{ steps.frontend-deploy.outputs.s3_deployed }}
+  #   steps:
+  #     - uses: actions/checkout@v4
 
-      - name: Test echo
-        run: |
-          echo "Deploying frontend to AWS for environment stage"
-          date
+  #     - name: Test echo
+  #       run: |
+  #         echo "Deploying frontend to AWS for environment stage"
+  #         date
 
-      - name: Download frontend-archive-stage artifact
-        if: needs.detect-changes.outputs.frontend-changed == 'true'
-        uses: actions/download-artifact@v4
-        with:
-          name: dist-web-stage
-          path: frontend-source
+  #     - name: Download frontend-archive-stage artifact
+  #       if: needs.detect-changes.outputs.frontend-changed == 'true'
+  #       uses: actions/download-artifact@v4
+  #       with:
+  #         name: dist-web-stage
+  #         path: frontend-source
 
-      - name: Configure AWS credentials
-        if: needs.detect-changes.outputs.frontend-changed == 'true'
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-region: eu-central-1
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+  #     - name: Configure AWS credentials
+  #       if: needs.detect-changes.outputs.frontend-changed == 'true'
+  #       uses: aws-actions/configure-aws-credentials@v4
+  #       with:
+  #         aws-region: eu-central-1
+  #         aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+  #         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
-      - name: Deploy to stage
-        if: needs.detect-changes.outputs.frontend-changed == 'true'
-        id: frontend-deploy
-        run: |
-          cd frontend-source
-          aws s3 cp . s3://tb-send-suite-stage-frontend/ --recursive
-          echo "s3_deployed=true" >> "$GITHUB_OUTPUT"
+  #     - name: Deploy to stage
+  #       if: needs.detect-changes.outputs.frontend-changed == 'true'
+  #       id: frontend-deploy
+  #       run: |
+  #         cd frontend-source
+  #         aws s3 cp . s3://tb-send-suite-stage-frontend/ --recursive
+  #         echo "s3_deployed=true" >> "$GITHUB_OUTPUT"
 
-  frontend-invalidate-stage-cdn:
-    needs: [detect-changes, frontend-deploy-stage-aws, backend-deploy-stage-aws]
-    if: ${{ always() && needs.detect-changes.outputs.frontend-changed == 'true' && needs.frontend-deploy-stage-aws.result == 'success' && (needs.detect-changes.outputs.backend-changed != 'true' || needs.backend-deploy-stage-aws.result == 'success') }}
-    runs-on: ubuntu-latest
-    environment: send-stage
-    steps:
-      - name: Test echo
-        run: |
-          echo "Invalidating CDN for stage environment"
-          date
+  # frontend-invalidate-stage-cdn:
+  #   needs: [detect-changes, frontend-deploy-stage-aws, backend-deploy-stage-aws]
+  #   if: ${{ always() && needs.detect-changes.outputs.frontend-changed == 'true' && needs.frontend-deploy-stage-aws.result == 'success' && (needs.detect-changes.outputs.backend-changed != 'true' || needs.backend-deploy-stage-aws.result == 'success') }}
+  #   runs-on: ubuntu-latest
+  #   environment: send-stage
+  #   steps:
+  #     - name: Test echo
+  #       run: |
+  #         echo "Invalidating CDN for stage environment"
+  #         date
 
-      - name: Configure AWS credentials
-        # if: needs.detect-changes.outputs.frontend-changed == 'true'
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-region: eu-central-1 
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+  #     - name: Configure AWS credentials
+  #       # if: needs.detect-changes.outputs.frontend-changed == 'true'
+  #       uses: aws-actions/configure-aws-credentials@v4
+  #       with:
+  #         aws-region: eu-central-1 
+  #         aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+  #         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
-      - name: Invalidate CDN, stage only
-        if: needs.frontend-deploy-stage-aws.outputs.s3_deployed == 'true'
-        run: |
-          echo "Invalidating CDN for environment: stage"
-          aws cloudfront create-invalidation --distribution-id ${{ vars.STAGE_CF_DISTRO_ID }} --paths "/*"
+  #     - name: Invalidate CDN, stage only
+  #       if: needs.frontend-deploy-stage-aws.outputs.s3_deployed == 'true'
+  #       run: |
+  #         echo "Invalidating CDN for environment: stage"
+  #         aws cloudfront create-invalidation --distribution-id ${{ vars.STAGE_CF_DISTRO_ID }} --paths "/*"
 
-  addon-changes:
-    needs: detect-changes
-    runs-on: ubuntu-latest
-    container:
-      image: ghcr.io/${{ github.repository }}/cached-devcontainer:latest
-    env:
-      IS_CI_AUTOMATION: yes
-    if: needs.detect-changes.outputs.addon-changed == 'true' || needs.detect-changes.outputs.frontend-changed == 'true' || github.event.inputs.force_addon == 'true'
+  # addon-changes:
+  #   needs: detect-changes
+  #   runs-on: ubuntu-latest
+  #   container:
+  #     image: ghcr.io/${{ github.repository }}/cached-devcontainer:latest
+  #   env:
+  #     IS_CI_AUTOMATION: yes
+  #   if: needs.detect-changes.outputs.addon-changed == 'true' || needs.detect-changes.outputs.frontend-changed == 'true' || github.event.inputs.force_addon == 'true'
 
-    environment: send-stage
-    strategy:
-      matrix:
-        env: ["stage", "prod"]
-        include:
-          - env: "stage"
-            base_url: "https://send-stage.tb.pro"
-            send_server_url: "https://send-backend-stage.tb.pro"
-            send_client_url: "https://send-stage.tb.pro"
-          - env: "prod"
-            base_url: "https://send.tb.pro"
-            send_server_url: "https://send-backend.tb.pro"
-            send_client_url: "https://send.tb.pro"
-    steps:
-      - uses: actions/checkout@v4
+  #   environment: send-stage
+  #   strategy:
+  #     matrix:
+  #       env: ["stage", "prod"]
+  #       include:
+  #         - env: "stage"
+  #           base_url: "https://send-stage.tb.pro"
+  #           send_server_url: "https://send-backend-stage.tb.pro"
+  #           send_client_url: "https://send-stage.tb.pro"
+  #         - env: "prod"
+  #           base_url: "https://send.tb.pro"
+  #           send_server_url: "https://send-backend.tb.pro"
+  #           send_client_url: "https://send.tb.pro"
+  #   steps:
+  #     - uses: actions/checkout@v4
 
-      # Addon build configuration
-      - name: (Addon) Create .env file from secrets
-        env:
-          SENTRY_AUTH_TOKEN: ${{ matrix.env == 'stage' && secrets.VITE_SENTRY_AUTH_TOKEN_STAGE || secrets.VITE_SENTRY_AUTH_TOKEN_PROD }}
-          SENTRY_DSN:  ${{ matrix.env == 'stage' && vars.VITE_SENTRY_DSN_STAGE || vars.VITE_SENTRY_DSN_PROD}}
-          POSTHOG_KEY: ${{ matrix.env == 'stage' && secrets.VITE_POSTHOG_PROJECT_KEY_STAGE || secrets.VITE_POSTHOG_PROJECT_KEY_PROD }}
-          POSTHOG_HOST: ${{ matrix.env == 'stage' && vars.VITE_POSTHOG_HOST_STAGE ||  vars.VITE_POSTHOG_HOST_PROD}} 
-          OIDC_CLIENT_ID: ${{ matrix.env == 'stage' && secrets.VITE_OIDC_CLIENT_ID_STAGE || secrets.VITE_OIDC_CLIENT_ID_PROD }}
-          OIDC_ROOT_URL: ${{ matrix.env == 'stage' && secrets.VITE_OIDC_ROOT_URL_STAGE || secrets.VITE_OIDC_ROOT_URL_PROD}}
-          BASE_URL: ${{ matrix.base_url }}
-          SEND_SERVER_URL: ${{ matrix.send_server_url }}
-          SEND_CLIENT_URL: ${{ matrix.send_client_url }}
+  #     # Addon build configuration
+  #     - name: (Addon) Create .env file from secrets
+  #       env:
+  #         SENTRY_AUTH_TOKEN: ${{ matrix.env == 'stage' && secrets.VITE_SENTRY_AUTH_TOKEN_STAGE || secrets.VITE_SENTRY_AUTH_TOKEN_PROD }}
+  #         SENTRY_DSN:  ${{ matrix.env == 'stage' && vars.VITE_SENTRY_DSN_STAGE || vars.VITE_SENTRY_DSN_PROD}}
+  #         POSTHOG_KEY: ${{ matrix.env == 'stage' && secrets.VITE_POSTHOG_PROJECT_KEY_STAGE || secrets.VITE_POSTHOG_PROJECT_KEY_PROD }}
+  #         POSTHOG_HOST: ${{ matrix.env == 'stage' && vars.VITE_POSTHOG_HOST_STAGE ||  vars.VITE_POSTHOG_HOST_PROD}} 
+  #         OIDC_CLIENT_ID: ${{ matrix.env == 'stage' && secrets.VITE_OIDC_CLIENT_ID_STAGE || secrets.VITE_OIDC_CLIENT_ID_PROD }}
+  #         OIDC_ROOT_URL: ${{ matrix.env == 'stage' && secrets.VITE_OIDC_ROOT_URL_STAGE || secrets.VITE_OIDC_ROOT_URL_PROD}}
+  #         BASE_URL: ${{ matrix.base_url }}
+  #         SEND_SERVER_URL: ${{ matrix.send_server_url }}
+  #         SEND_CLIENT_URL: ${{ matrix.send_client_url }}
 
-        run: |
-          echo "Environment: ${{ matrix.env }}"
-          cd packages/send/frontend
-          cat << EOF > .env
-          VUE_BASE_URL=${BASE_URL}
-          VITE_SEND_SERVER_URL=${SEND_SERVER_URL}
-          VITE_SEND_CLIENT_URL=${SEND_CLIENT_URL}
-          VITE_SENTRY_AUTH_TOKEN=${SENTRY_AUTH_TOKEN}
-          VITE_SENTRY_DSN=${SENTRY_DSN}
-          VITE_POSTHOG_PROJECT_KEY=${POSTHOG_KEY}
-          VITE_POSTHOG_HOST=${POSTHOG_HOST}
-          VITE_OIDC_CLIENT_ID=${OIDC_CLIENT_ID}
-          VITE_OIDC_ROOT_URL=${OIDC_ROOT_URL}                    
-          EOF
+  #       run: |
+  #         echo "Environment: ${{ matrix.env }}"
+  #         cd packages/send/frontend
+  #         cat << EOF > .env
+  #         VUE_BASE_URL=${BASE_URL}
+  #         VITE_SEND_SERVER_URL=${SEND_SERVER_URL}
+  #         VITE_SEND_CLIENT_URL=${SEND_CLIENT_URL}
+  #         VITE_SENTRY_AUTH_TOKEN=${SENTRY_AUTH_TOKEN}
+  #         VITE_SENTRY_DSN=${SENTRY_DSN}
+  #         VITE_POSTHOG_PROJECT_KEY=${POSTHOG_KEY}
+  #         VITE_POSTHOG_HOST=${POSTHOG_HOST}
+  #         VITE_OIDC_CLIENT_ID=${OIDC_CLIENT_ID}
+  #         VITE_OIDC_ROOT_URL=${OIDC_ROOT_URL}                    
+  #         EOF
 
-      - name: (Addon) Create .env file from secrets
-        env:
-          SENTRY_AUTH_TOKEN: ${{ matrix.env == 'stage' && secrets.VITE_SENTRY_AUTH_TOKEN_STAGE || secrets.VITE_SENTRY_AUTH_TOKEN_PROD }}
-          SENTRY_DSN:  ${{ matrix.env == 'stage' && vars.VITE_SENTRY_DSN_STAGE || vars.VITE_SENTRY_DSN_PROD}}
-          POSTHOG_KEY: ${{ matrix.env == 'stage' && secrets.VITE_POSTHOG_PROJECT_KEY_STAGE || secrets.VITE_POSTHOG_PROJECT_KEY_PROD }}
-          POSTHOG_HOST: ${{ matrix.env == 'stage' && vars.VITE_POSTHOG_HOST_STAGE ||  vars.VITE_POSTHOG_HOST_PROD}}
-          OIDC_CLIENT_ID: ${{ matrix.env == 'stage' && secrets.VITE_OIDC_CLIENT_ID_STAGE || secrets.VITE_OIDC_CLIENT_ID_PROD }}
-          OIDC_ROOT_URL: ${{ matrix.env == 'stage' && secrets.VITE_OIDC_ROOT_URL_STAGE || secrets.VITE_OIDC_ROOT_URL_PROD}}
-          BASE_URL: ${{ matrix.base_url }}
-          SEND_SERVER_URL: ${{ matrix.send_server_url }}
-          SEND_CLIENT_URL: ${{ matrix.send_client_url }}
-        run: |
-          echo "Environment: ${{ matrix.env }}"
-          cd packages/addon
-          cat << EOF > .env
-          VUE_BASE_URL=${BASE_URL}
-          VITE_SEND_SERVER_URL=${SEND_SERVER_URL}
-          VITE_SEND_CLIENT_URL=${SEND_CLIENT_URL}
-          VITE_SENTRY_AUTH_TOKEN=${SENTRY_AUTH_TOKEN}
-          VITE_SENTRY_DSN=${SENTRY_DSN}
-          VITE_POSTHOG_PROJECT_KEY=${POSTHOG_KEY}
-          VITE_POSTHOG_HOST=${POSTHOG_HOST}
-          VITE_OIDC_CLIENT_ID=${OIDC_CLIENT_ID}
-          VITE_OIDC_ROOT_URL=${OIDC_ROOT_URL}                    
-          EOF
+  #     - name: (Addon) Create .env file from secrets
+  #       env:
+  #         SENTRY_AUTH_TOKEN: ${{ matrix.env == 'stage' && secrets.VITE_SENTRY_AUTH_TOKEN_STAGE || secrets.VITE_SENTRY_AUTH_TOKEN_PROD }}
+  #         SENTRY_DSN:  ${{ matrix.env == 'stage' && vars.VITE_SENTRY_DSN_STAGE || vars.VITE_SENTRY_DSN_PROD}}
+  #         POSTHOG_KEY: ${{ matrix.env == 'stage' && secrets.VITE_POSTHOG_PROJECT_KEY_STAGE || secrets.VITE_POSTHOG_PROJECT_KEY_PROD }}
+  #         POSTHOG_HOST: ${{ matrix.env == 'stage' && vars.VITE_POSTHOG_HOST_STAGE ||  vars.VITE_POSTHOG_HOST_PROD}}
+  #         OIDC_CLIENT_ID: ${{ matrix.env == 'stage' && secrets.VITE_OIDC_CLIENT_ID_STAGE || secrets.VITE_OIDC_CLIENT_ID_PROD }}
+  #         OIDC_ROOT_URL: ${{ matrix.env == 'stage' && secrets.VITE_OIDC_ROOT_URL_STAGE || secrets.VITE_OIDC_ROOT_URL_PROD}}
+  #         BASE_URL: ${{ matrix.base_url }}
+  #         SEND_SERVER_URL: ${{ matrix.send_server_url }}
+  #         SEND_CLIENT_URL: ${{ matrix.send_client_url }}
+  #       run: |
+  #         echo "Environment: ${{ matrix.env }}"
+  #         cd packages/addon
+  #         cat << EOF > .env
+  #         VUE_BASE_URL=${BASE_URL}
+  #         VITE_SEND_SERVER_URL=${SEND_SERVER_URL}
+  #         VITE_SEND_CLIENT_URL=${SEND_CLIENT_URL}
+  #         VITE_SENTRY_AUTH_TOKEN=${SENTRY_AUTH_TOKEN}
+  #         VITE_SENTRY_DSN=${SENTRY_DSN}
+  #         VITE_POSTHOG_PROJECT_KEY=${POSTHOG_KEY}
+  #         VITE_POSTHOG_HOST=${POSTHOG_HOST}
+  #         VITE_OIDC_CLIENT_ID=${OIDC_CLIENT_ID}
+  #         VITE_OIDC_ROOT_URL=${OIDC_ROOT_URL}                    
+  #         EOF
 
-      - name: Build the frontend's static assets
-        id: addon-frontend-build
-        env:
-          BASE_URL: ${{matrix.base_url}}
-          ENV: ${{ matrix.env }}
-          IS_CI_AUTOMATION: yes
-        run: |
-          # install packages that addon depends on
-          pnpm install --filter tbpro-shared
-          pnpm install --filter addon
-          pnpm install --filter send-frontend
+  #     - name: Build the frontend's static assets
+  #       id: addon-frontend-build
+  #       env:
+  #         BASE_URL: ${{matrix.base_url}}
+  #         ENV: ${{ matrix.env }}
+  #         IS_CI_AUTOMATION: yes
+  #       run: |
+  #         # install packages that addon depends on
+  #         pnpm install --filter tbpro-shared
+  #         pnpm install --filter addon
+  #         pnpm install --filter send-frontend
 
-          lerna run build --scope=addon
+  #         lerna run build --scope=addon
           
-          cd packages/addon/
+  #         cd packages/addon/
 
-          # Find build addon xpi file
-          XPI="$(find tbpro-addon-*.xpi)"
+  #         # Find build addon xpi file
+  #         XPI="$(find tbpro-addon-*.xpi)"
 
-          # create now file name for env
-          RENAMED_XPI="tbpro-addon-${ENV}-$(basename "$XPI" | cut -d "-" -f3-)"
+  #         # create now file name for env
+  #         RENAMED_XPI="tbpro-addon-${ENV}-$(basename "$XPI" | cut -d "-" -f3-)"
 
-          # rename the file by moving
-          mv -v "${XPI}" "${RENAMED_XPI}"
+  #         # rename the file by moving
+  #         mv -v "${XPI}" "${RENAMED_XPI}"
 
-          # export outputs for use in next steps
-          echo "xpi_filename=$RENAMED_XPI" >> "$GITHUB_OUTPUT"
-          echo "xpi_file_path=packages/addon/$RENAMED_XPI" >> "$GITHUB_OUTPUT"
+  #         # export outputs for use in next steps
+  #         echo "xpi_filename=$RENAMED_XPI" >> "$GITHUB_OUTPUT"
+  #         echo "xpi_file_path=packages/addon/$RENAMED_XPI" >> "$GITHUB_OUTPUT"
 
-      - name: Archive the XPI
-        id: xpi-archive-addon
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ steps.addon-frontend-build.outputs.xpi_filename }}
-          path: ${{ steps.addon-frontend-build.outputs.xpi_file_path }}
-          compression-level: 0 # <-- don't zip!
+  #     - name: Archive the XPI
+  #       id: xpi-archive-addon
+  #       uses: actions/upload-artifact@v4
+  #       with:
+  #         name: ${{ steps.addon-frontend-build.outputs.xpi_filename }}
+  #         path: ${{ steps.addon-frontend-build.outputs.xpi_file_path }}
+  #         compression-level: 0 # <-- don't zip!
 
-      - name: Deploy addon stage to ATN via web-ext
-        if: matrix.env == 'stage'
-        continue-on-error: true
-        id: web-ext-sign-stage-addon
-        uses: kewisch/action-web-ext@v1
-        env:
-          BASE_URL: https://send-stage.tb.pro
-        with:
-          cmd: sign
-          source:  ${{ steps.addon-frontend-build.outputs.xpi_file_path }}
-          channel: listed
-          apiUrlPrefix: "https://addons.thunderbird.net/api/v4"
-          apiKey: ${{ secrets.ATN_API_KEY }}
-          apiSecret: ${{ secrets.ATN_API_SECRET }}
+  #     - name: Deploy addon stage to ATN via web-ext
+  #       if: matrix.env == 'stage'
+  #       continue-on-error: true
+  #       id: web-ext-sign-stage-addon
+  #       uses: kewisch/action-web-ext@v1
+  #       env:
+  #         BASE_URL: https://send-stage.tb.pro
+  #       with:
+  #         cmd: sign
+  #         source:  ${{ steps.addon-frontend-build.outputs.xpi_file_path }}
+  #         channel: listed
+  #         apiUrlPrefix: "https://addons.thunderbird.net/api/v4"
+  #         apiKey: ${{ secrets.ATN_API_KEY }}
+  #         apiSecret: ${{ secrets.ATN_API_SECRET }}
 
   create-draft-release:
-    needs: [detect-changes, backend-build-stage, frontend-build, addon-changes]
-    if: ${{ always() && ((github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && github.event.inputs.allow_draft_release == 'true')) && (needs.detect-changes.outputs.backend-changed == 'true' || needs.detect-changes.outputs.frontend-changed == 'true' || needs.detect-changes.outputs.addon-changed == 'true') && (needs.detect-changes.outputs.backend-changed != 'true' || needs.backend-build-stage.result == 'success') && (needs.detect-changes.outputs.frontend-changed != 'true' || needs.frontend-build.result == 'success') && ((needs.detect-changes.outputs.frontend-changed != 'true' && needs.detect-changes.outputs.addon-changed != 'true') || needs.addon-changes.result == 'success') }}
+    # needs: [detect-changes, backend-build-stage, frontend-build, addon-changes]
+    # if: ${{ always() && ((github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && github.event.inputs.allow_draft_release == 'true')) && (needs.detect-changes.outputs.backend-changed == 'true' || needs.detect-changes.outputs.frontend-changed == 'true' || needs.detect-changes.outputs.addon-changed == 'true') && (needs.detect-changes.outputs.backend-changed != 'true' || needs.backend-build-stage.result == 'success') && (needs.detect-changes.outputs.frontend-changed != 'true' || needs.frontend-build.result == 'success') && ((needs.detect-changes.outputs.frontend-changed != 'true' && needs.detect-changes.outputs.addon-changed != 'true') || needs.addon-changes.result == 'success') }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
